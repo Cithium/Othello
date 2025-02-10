@@ -134,18 +134,12 @@ class Othello:
                     self.board[r][c] = player  # Flip pieces
                     flipped_pieces.append((r, c))
 
-        return flipped_pieces  # Return flipped pieces to allow undoing moves
+        return flipped_pieces
 
     def undo_move(self, row, col, player, flipped_pieces):
         self.board[row][col] = 0
         for r, c in flipped_pieces:
-            self.board[r][
-                c
-            ] = -player  # Flip the captured pieces back to opponent's color
-
-    def evaluate_board1(self, player):
-        """Simple evaluation function: counts the number of pieces for the player."""
-        return sum(row.count(player) for row in self.board)
+            self.board[r][c] = -player
 
     def evaluate_board(self, player):
         """Improved evaluation function with positional weights."""
@@ -213,7 +207,7 @@ class Othello:
 
     def minimax_decision(self, player, depth, time_limit=5):
         start_time = time.time()
-        if player == 1:
+        if player == BLACK:
             return self.max_value(
                 depth, float("-inf"), float("inf"), start_time, time_limit
             )
@@ -310,5 +304,20 @@ class Othello:
 
 
 if __name__ == "__main__":
+    print("Easy = 1")
+    print("Medium = 2")
+    print("Hard = 3")
+    print("Master = 4")
+    diff = input("Choose your difficulty [1,2,3,4]: ")
+    match int(diff):
+        case 1:
+            DEPTH = 3
+        case 2:
+            DEPTH = 6
+        case 3:
+            DEPTH = 9
+        case 4:
+            DEPTH = 12
+
     game = Othello()
     game.game_loop()
