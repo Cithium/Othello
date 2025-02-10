@@ -1,5 +1,8 @@
+import time
+
 WHITE = -1
 BLACK = 1
+DEPTH = 4
 
 
 class Othello:
@@ -23,11 +26,10 @@ class Othello:
         self.board[mid][mid - 1] = WHITE  # White piece (●)
 
     def display_board(self):
-        print("  a b c d e f g h")
+        print("  1 2 3 4 5 6 7 8")
 
-        # Print each row with row numbers
         for i in range(self.size):
-            row_string = str(i + 1) + " "  # Row number
+            row_string = str(i + 1) + " "
             for j in range(self.size):
                 if self.board[i][j] == BLACK:
                     row_string += "○ "  # Black piece
@@ -54,13 +56,12 @@ class Othello:
             (1, 0),
             (1, 1),
         ]
-        move_valid = False  # Flag to check if at least one direction is valid
+        move_valid = False
 
         for dr, dc in directions:
             r, c = row + dr, col + dc
-            captured = []  # List of pieces that would be captured
+            captured = []
 
-            # Move in the given direction while opponent pieces are found
             while (
                 0 <= r < self.size
                 and 0 <= c < self.size
@@ -68,16 +69,15 @@ class Othello:
             ):
                 r += dr
                 c += dc
-                captured.append((r, c))  # Keep track of all captured pieces
+                captured.append((r, c))
 
-            # Ensure at least one opponent piece was found and the line ends in a player piece
             if (
                 captured
                 and 0 <= r < self.size
                 and 0 <= c < self.size
                 and self.board[r][c] == player
             ):
-                move_valid = True  # At least one valid capture direction
+                move_valid = True
 
         return move_valid
 
@@ -85,17 +85,16 @@ class Othello:
         """Finds and returns all valid moves for the player."""
         valid_moves = []
 
-        # Check every position on the board
         for row in range(self.size):
             for col in range(self.size):
                 if self.is_valid_move(row, col, player):
-                    valid_moves.append((row, col))  # Add valid move to list
+                    valid_moves.append((row, col))
 
         return valid_moves
 
     def make_move(self, row, col, player):
         if not self.is_valid_move(row, col, player):
-            return False  # Invalid move
+            return False
 
         self.board[row][col] = player
         opponent = -player
@@ -110,7 +109,7 @@ class Othello:
             (1, 1),
         ]
 
-        flipped_pieces = []  # Track flipped pieces for undoing moves
+        flipped_pieces = []
 
         for dr, dc in directions:
             r, c = row + dr, col + dc
@@ -138,7 +137,7 @@ class Othello:
         return flipped_pieces  # Return flipped pieces to allow undoing moves
 
     def undo_move(self, row, col, player, flipped_pieces):
-        self.board[row][col] = 0  # Remove the piece that was placed
+        self.board[row][col] = 0
         for r, c in flipped_pieces:
             self.board[r][
                 c
@@ -148,8 +147,8 @@ class Othello:
         """Simple evaluation function: counts the number of pieces for the player."""
         return sum(row.count(player) for row in self.board)
 
-    def max_value(self, depth):
-        if depth == 0:
+    def max_value(self, depth, alpha, beta, start_time, time_limit):
+        if depth == 0 or time.time() - start_time >= time_limit:
             return self.evaluate_board(1), None
 
         best_score = float("-inf")
@@ -158,17 +157,21 @@ class Othello:
         for move in self.get_valid_moves(1):
             row, col = move
             flipped_pieces = self.make_move(row, col, 1)
-            score, _ = self.min_value(depth - 1)
+            score, _ = self.min_value(depth - 1, alpha, beta, start_time, time_limit)
             self.undo_move(row, col, 1, flipped_pieces)
 
             if score > best_score:
                 best_score = score
                 best_move = move
 
+            alpha = max(alpha, best_score)
+            if alpha >= beta:
+                break
+
         return best_score, best_move
 
-    def min_value(self, depth):
-        if depth == 0:
+    def min_value(self, depth, alpha, beta, start_time, time_limit):
+        if depth == 0 or time.time() - start_time >= time_limit:
             return self.evaluate_board(-1), None
 
         best_score = float("inf")
@@ -177,25 +180,34 @@ class Othello:
         for move in self.get_valid_moves(-1):
             row, col = move
             flipped_pieces = self.make_move(row, col, -1)
-            score, _ = self.max_value(depth - 1)
+            score, _ = self.max_value(depth - 1, alpha, beta, start_time, time_limit)
             self.undo_move(row, col, -1, flipped_pieces)
 
             if score < best_score:
                 best_score = score
                 best_move = move
 
+            beta = min(beta, best_score)
+            if beta <= alpha:
+                break
+
         return best_score, best_move
 
-    def minimax_decision(self, player, depth):
+    def minimax_decision(self, player, depth, time_limit=5):
+        start_time = time.time()
         if player == 1:
-            return self.max_value(depth)
+            return self.max_value(
+                depth, float("-inf"), float("inf"), start_time, time_limit
+            )
         else:
-            return self.min_value(depth)
+            return self.min_value(
+                depth, float("-inf"), float("inf"), start_time, time_limit
+            )
 
     def declare_winner(self):
         """Determines the winner by counting pieces."""
-        black_count = sum(row.count(1) for row in self.board)
-        white_count = sum(row.count(-1) for row in self.board)
+        black_count = sum(row.count(BLACK) for row in self.board)
+        white_count = sum(row.count(WHITE) for row in self.board)
 
         print(f"Final Score - Black (○): {black_count}, White (●): {white_count}")
 
@@ -209,7 +221,6 @@ class Othello:
     def game_loop(self):
         """Main loop for turn-based play with player color selection."""
 
-        # Ask the player to choose Black (○) or White (●)
         while True:
             player_choice = (
                 input("Do you want to play as Black (○) or White (●)? (B/W): ")
@@ -217,46 +228,42 @@ class Othello:
                 .lower()
             )
             if player_choice == "b":
-                human_player = 1  # Black (○)
+                human_player = BLACK  # Black (○)
                 break
             elif player_choice == "w":
-                human_player = -1  # White (●)
+                human_player = WHITE  # White (●)
                 break
             else:
                 print("Invalid choice! Please enter 'B' for Black or 'W' for White.")
 
-        player = 1  # Black (○) always starts
+        player = 1
 
         while True:
-            self.display_board()  # Show the board
+            self.display_board()
 
             valid_moves = self.get_valid_moves(player)
 
-            # Check if the current player has any valid moves
             if not valid_moves:
                 print(
-                    f"No valid moves for {'Black (○)' if player == 1 else 'White (●)'}! Passing turn."
+                    f"❌ No valid moves for {'Black (○)' if player == BLACK else 'White (●)'}! Passing turn."
                 )
                 player = -player  # Switch turn
 
-                # Check if BOTH players have no moves (game over)
                 if not self.get_valid_moves(player):
-                    print("No moves for both players. Game Over!")
+                    print("⚠️ No moves for both players. Game Over!")
                     self.display_board()
                     self.declare_winner()
                     break
                 continue  # Skip to next player
 
-            # Determine if it's the human player's turn
             if player == human_player:
-                print(f"Your turn ({'Black (○)' if player == 1 else 'White (●)'})!")
+                print(f"Your turn ({'Black (○)' if player == BLACK else 'White (●)'})!")
 
-                # Display valid moves in 1-based indexing
                 print("Valid moves:", [(r + 1, c + 1) for r, c in valid_moves])
 
                 while True:
                     try:
-                        move_input = input("Enter your move (row col): ")
+                        move_input = input("Enter your move in the format ROW COL : ")
                         row, col = map(int, move_input.split())
                         row -= 1  # Convert to zero-based index
                         col -= 1
@@ -270,10 +277,12 @@ class Othello:
                         print(
                             "Invalid input! Enter row and column as numbers (e.g., '3 4')."
                         )
-
+            # **AI Turn**
             else:
-                print(f"AI's turn ({'Black (○)' if player == 1 else 'White (●)'})...")
-                _, best_move = self.minimax_decision(player, depth=3)
+                print(
+                    f"AI's turn ({'Black (○)' if player == BLACK else 'White (●)'})..."
+                )
+                _, best_move = self.minimax_decision(player, DEPTH)
 
                 if best_move:
                     print(
