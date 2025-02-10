@@ -2,7 +2,7 @@ import time
 
 WHITE = -1
 BLACK = 1
-DEPTH = 4
+DEPTH = 6
 
 
 class Othello:
@@ -143,22 +143,40 @@ class Othello:
                 c
             ] = -player  # Flip the captured pieces back to opponent's color
 
-    def evaluate_board(self, player):
+    def evaluate_board1(self, player):
         """Simple evaluation function: counts the number of pieces for the player."""
         return sum(row.count(player) for row in self.board)
 
+    def evaluate_board(self, player):
+        """Improved evaluation function with positional weights."""
+        corner_weight = 10  # High value for corners
+        edge_weight = 5  # Moderate value for edges
+        piece_weight = 1  # Default piece count value
+
+        score = 0
+        for r in range(self.size):
+            for c in range(self.size):
+                if self.board[r][c] == player:
+                    if (r, c) in [(0, 0), (0, 7), (7, 0), (7, 7)]:  # Corners
+                        score += corner_weight
+                    elif (r == 0 or r == 7) or (c == 0 or c == 7):  # Edges
+                        score += edge_weight
+                    else:
+                        score += piece_weight
+        return score
+
     def max_value(self, depth, alpha, beta, start_time, time_limit):
         if depth == 0 or time.time() - start_time >= time_limit:
-            return self.evaluate_board(1), None
+            return self.evaluate_board(BLACK), None
 
         best_score = float("-inf")
         best_move = None
 
-        for move in self.get_valid_moves(1):
+        for move in self.get_valid_moves(BLACK):
             row, col = move
-            flipped_pieces = self.make_move(row, col, 1)
+            flipped_pieces = self.make_move(row, col, BLACK)
             score, _ = self.min_value(depth - 1, alpha, beta, start_time, time_limit)
-            self.undo_move(row, col, 1, flipped_pieces)
+            self.undo_move(row, col, BLACK, flipped_pieces)
 
             if score > best_score:
                 best_score = score
@@ -172,16 +190,16 @@ class Othello:
 
     def min_value(self, depth, alpha, beta, start_time, time_limit):
         if depth == 0 or time.time() - start_time >= time_limit:
-            return self.evaluate_board(-1), None
+            return self.evaluate_board(WHITE), None
 
         best_score = float("inf")
         best_move = None
 
-        for move in self.get_valid_moves(-1):
+        for move in self.get_valid_moves(WHITE):
             row, col = move
-            flipped_pieces = self.make_move(row, col, -1)
+            flipped_pieces = self.make_move(row, col, WHITE)
             score, _ = self.max_value(depth - 1, alpha, beta, start_time, time_limit)
-            self.undo_move(row, col, -1, flipped_pieces)
+            self.undo_move(row, col, WHITE, flipped_pieces)
 
             if score < best_score:
                 best_score = score
@@ -205,7 +223,6 @@ class Othello:
             )
 
     def declare_winner(self):
-        """Determines the winner by counting pieces."""
         black_count = sum(row.count(BLACK) for row in self.board)
         white_count = sum(row.count(WHITE) for row in self.board)
 
@@ -247,7 +264,7 @@ class Othello:
                 print(
                     f"❌ No valid moves for {'Black (○)' if player == BLACK else 'White (●)'}! Passing turn."
                 )
-                player = -player  # Switch turn
+                player = -player
 
                 if not self.get_valid_moves(player):
                     print("⚠️ No moves for both players. Game Over!")
@@ -265,7 +282,7 @@ class Othello:
                     try:
                         move_input = input("Enter your move in the format ROW COL : ")
                         row, col = map(int, move_input.split())
-                        row -= 1  # Convert to zero-based index
+                        row -= 1
                         col -= 1
 
                         if (row, col) in valid_moves:
@@ -284,13 +301,12 @@ class Othello:
                 )
                 _, best_move = self.minimax_decision(player, DEPTH)
 
+                # Display in human readble index
                 if best_move:
-                    print(
-                        f"AI chooses move: {best_move[0]+1}, {best_move[1]+1}"
-                    )  # Display in 1-based index
+                    print(f"AI chooses move: {best_move[0]+1}, {best_move[1]+1}")
                     self.make_move(best_move[0], best_move[1], player)
 
-            player = -player  # Switch turns
+            player = -player
 
 
 if __name__ == "__main__":
